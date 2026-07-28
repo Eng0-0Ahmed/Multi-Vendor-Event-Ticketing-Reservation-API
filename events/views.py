@@ -47,8 +47,7 @@ class EventEditView(generics.UpdateAPIView):
 class EventDeleteView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated, IsOrganizer, IsEventOwner]
     serializer_class = EventSerializer
-    def get_queryset(self):
-        return Event.objects.filter(status='published')
+    queryset = Event.objects.all()
     
     def perform_destroy(self, instance):
         instance.soft_delete()
