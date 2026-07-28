@@ -10,3 +10,4 @@ __pycache__/
 .sqlite3
 .pytest_cache/
 .DS_Store
+staticfiles/
