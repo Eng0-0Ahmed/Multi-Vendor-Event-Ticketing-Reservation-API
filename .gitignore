@@ -2,7 +2,11 @@
 venv
 /media/
 db.sqlite3
-__pycache__
-.pytest_cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 .DS_Store
 .sqlite3
+.pytest_cache/
+.DS_Store
