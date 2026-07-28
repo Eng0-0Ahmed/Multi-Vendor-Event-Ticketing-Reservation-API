@@ -45,9 +45,11 @@ class EventEditView(generics.UpdateAPIView):
     lookup_field = 'uuid'
     
 class EventDeleteView(generics.DestroyAPIView):
-    queryset = Event.objects.all()
     permission_classes = [IsAuthenticated, IsOrganizer, IsEventOwner]
     serializer_class = EventSerializer
+    def get_queryset(self):
+        return Event.objects.filter(status='published')
+    
     def perform_destroy(self, instance):
         instance.soft_delete()
     lookup_field = 'uuid'

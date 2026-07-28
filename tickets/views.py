@@ -123,6 +123,7 @@ class StripeWebhookView(APIView):
 
 
 class VerifyTicketView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         qr_data = request.data.get('qr_data', '')
         if not qr_data.startswith('TICKET:'):
