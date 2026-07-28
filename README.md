@@ -2,7 +2,7 @@
 
 A production-ready Django REST Framework API for multi-vendor event ticketing, dynamic seat reservations, Stripe checkout integration, automated QR-code generation, and venue entry verification.
 
-🚀 **Live Interactive API Documentation (Swagger):** [ahmedaymen00.pythonanywhere.com/api/docs/](https://ahmedaymen00.pythonanywhere.com/api/docs/)
+**Live Interactive API Documentation (Swagger):** [ahmedaymen00.pythonanywhere.com/api/docs/](https://ahmedaymen00.pythonanywhere.com/api/docs/)
 
 ---
 
