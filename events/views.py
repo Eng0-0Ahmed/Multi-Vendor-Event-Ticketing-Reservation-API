@@ -1,0 +1,59 @@
+from django.shortcuts import render
+from .models import Event
+from .serializers import EventSerializer
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics, status
+from rest_framework.response import Response
+from users.permissions import IsOrganizer, IsEventOwner
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter, SearchFilter
+
+class EventListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EventSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = {
+        'vendor': ['exact'],
+        'title': ['icontains'],
+        'event_date': ['gte', 'lte', 'exact'],
+        'location' : ['exact', 'icontains'],
+    }
+    search_fields = ['vendor__first_name', 'vendor__family_name', 'title', 'description', 'location']
+    ordering_fields = ['event_date', 'created_at']
+    ordering = ['event_date']
+
+    def get_queryset(self):
+        return Event.objects.filter(status='published')
+    
+class EventDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EventSerializer
+    queryset = Event.objects.all()
+    lookup_field = 'uuid'
+
+class EventCreateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated, IsOrganizer]
+    serializer_class = EventSerializer
+    def perform_create(self, serializer):
+        serializer.save(vendor=self.request.user)
+
+class EventEditView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated, IsOrganizer, IsEventOwner]
+    serializer_class = EventSerializer
+    queryset = Event.objects.all()
+    lookup_field = 'uuid'
+    
+class EventDeleteView(generics.DestroyAPIView):
+    queryset = Event.objects.all()
+    permission_classes = [IsAuthenticated, IsOrganizer, IsEventOwner]
+    serializer_class = EventSerializer
+    def perform_destroy(self, instance):
+        instance.soft_delete()
+    lookup_field = 'uuid'
+
+class VendorEventListView(generics.ListAPIView):
+    serializer_class = EventSerializer
+    permission_classes = [IsAuthenticated, IsOrganizer]
+    def get_queryset(self):
+        return Event.objects.filter(vendor=self.request.user)
