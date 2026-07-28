@@ -15,7 +15,6 @@ This API powers a scalable event management platform. Multiple vendors can publi
 ## Key Features & Technical Highlights
 
 * **Multi-Vendor Management:** Role-based permissions allowing vendors to publish events, adjust capacities, and track ticket availability.
-* **Race-Condition & Double-Booking Guards:** Uses atomic database transactions (`transaction.atomic`) and row-level locking (`select_for_update`) with expiring reservation timers to prevent double-booking during high-concurrency ticket drops.
 * **Stripe Payment & Webhook Processing:** Integrates Stripe Checkout with asynchronous webhook handling (`checkout.session.completed`) using cryptographic signature verification to ensure secure order fulfillment.
 * **Automated QR Generation & Email Delivery:** Automatically generates unique QR codes upon payment confirmation and emails tickets directly to buyers.
 * **Gate Verification Endpoint:** Fast indexed lookup endpoint (`POST /api/tickets/verify/`) for venue staff to validate scanned QR codes and prevent reuse.
@@ -23,6 +22,12 @@ This API powers a scalable event management platform. Multiple vendors can publi
 * **Interactive API Docs:** Auto-generated OpenAPI 3.0 schema and interactive Swagger UI powered by `drf-spectacular`.
 
 ---
+
+### Performance & Database Optimization
+
+* **Query Optimization (N+1 Problem Fix):** Used `select_related` for foreign key relationships (e.g., fetching Events with Venues) and `prefetch_related` for many-to-many relationships (e.g., Tickets and Orders) to reduce database queries from `O(N)` down to a single constant-time query (`O(1)`) per request.
+* **Race-Condition, Double-Booking Guards & Concurrency Control:** Uses atomic database transactions (`transaction.atomic`) and row-level locking (`select_for_update`) with expiring reservation timers to prevent double-booking during high-concurrency ticket drops.
+* **Indexed Lookups:** Leveraged database indexing on high-frequency query fields (like QR code verification tokens) to ensure rapid response times during event entry validation.
 
 ## Tech Stack
 
