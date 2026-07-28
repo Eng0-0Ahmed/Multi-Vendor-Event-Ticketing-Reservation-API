@@ -10,30 +10,39 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('events', '0001_initial'),
+        ("events", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='event',
-            name='vendor',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='users', to=settings.AUTH_USER_MODEL),
+            model_name="event",
+            name="vendor",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="users",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddIndex(
-            model_name='event',
-            index=models.Index(fields=['event_date'], name='event_date_index'),
+            model_name="event",
+            index=models.Index(fields=["event_date"], name="event_date_index"),
         ),
         migrations.AddIndex(
-            model_name='event',
-            index=models.Index(fields=['status', 'event_date'], name='status_event_date_index'),
+            model_name="event",
+            index=models.Index(
+                fields=["status", "event_date"], name="status_event_date_index"
+            ),
         ),
         migrations.AddIndex(
-            model_name='event',
-            index=models.Index(fields=['location'], name='location_index'),
+            model_name="event",
+            index=models.Index(fields=["location"], name="location_index"),
         ),
         migrations.AddConstraint(
-            model_name='event',
-            constraint=models.CheckConstraint(condition=models.Q(('event_date__gt', models.F('created_at'))), name='event_date_after_created_at'),
+            model_name="event",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("event_date__gt", models.F("created_at"))),
+                name="event_date_after_created_at",
+            ),
         ),
     ]
