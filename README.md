@@ -29,6 +29,13 @@ This API powers a scalable event management platform. Multiple vendors can publi
 * **Race-Condition, Double-Booking Guards & Concurrency Control:** Uses atomic database transactions (`transaction.atomic`) and row-level locking (`select_for_update`) with expiring reservation timers to prevent double-booking during high-concurrency ticket drops.
 * **Indexed Lookups:** Leveraged database indexing on high-frequency query fields (like QR code verification tokens) to ensure rapid response times during event entry validation.
 
+### Security & Reliability
+
+* **Stripe Webhook Signature Verification:** Implemented cryptographic signature checks on incoming payment webhooks to prevent spoofing and unauthorized ticket fulfillment.
+* **Role-Based Access Control (RBAC):** Restricted vendor actions (event management, capacity overrides) and staff operations (ticket validation) using custom Django REST Framework permission classes.
+* **JWT Authentication & Token Security:** Secured API endpoints using JSON Web Tokens (JWT) with strict expiration policies and secure key storage.
+* **Idempotency & Double-Spend Guards:** Protected ticket reservation state machines against double-booking and duplicate payment processing using atomic database locks.
+
 ## Tech Stack
 
 * **Language:** Python 3.12+
