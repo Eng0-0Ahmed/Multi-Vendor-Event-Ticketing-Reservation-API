@@ -11,7 +11,6 @@ from .serializers import (
 from .models import User, EmailConfirmationToken
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .utils import send_confirmation_email
 from rest_framework.response import Response
 from .tokens import password_reset_token_generator
 from django.contrib.auth import get_user_model
@@ -91,7 +90,7 @@ class RequestResetPasswordView(APIView):
         payload = {
             "event_type": "USER_REGISTRATION_EMAIL",
             "email": user.email,
-            "token_id": str(token.pk),
+            "token_id": str(token),
             "user_id": str(user.pk)
         }
         redis_client.publish("notifications", json.dumps(payload))

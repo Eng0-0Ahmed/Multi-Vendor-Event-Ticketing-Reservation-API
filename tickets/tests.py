@@ -7,10 +7,10 @@ from django.utils import timezone
 from datetime import timedelta
 from events.models import Event
 import uuid
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import os
 from django.conf import settings
-from django.core import mail
+import json
 
 User = get_user_model()
 
@@ -146,8 +146,11 @@ class TicketTest(APITestCase):
         )
         mock_stripe_create.assert_called_once()
 
+    @patch('tickets.views.get_redis_client')
     @patch("stripe.Webhook.construct_event")
-    def test_stripe_webhook_updates_ticket_status(self, mock_construct_event):
+    def test_stripe_webhook_updates_ticket_status(self, mock_construct_event, mock_get_redis_client):
+        mock_redis_instance = MagicMock()
+        mock_get_redis_client.return_value = mock_redis_instance
         mock_construct_event.return_value = {
             "type": "checkout.session.completed",
             "data": {"object": {"metadata": {"ticket_id": str(self.ticket.uuid)}}},
@@ -164,12 +167,14 @@ class TicketTest(APITestCase):
         self.assertEqual(self.ticket.status, Ticket.Status.PURCHASED)
 
     @patch("stripe.Webhook.construct_event")
-    def test_sends_email_on_purchased(self, mock_construct_event):
+    @patch('tickets.views.get_redis_client')
+    def test_sends_email_on_purchased(self, mock_get_redis_client, mock_construct_event):
+        mock_redis_instance = MagicMock()
+        mock_get_redis_client.return_value = mock_redis_instance
         mock_construct_event.return_value = {
             "type": "checkout.session.completed",
             "data": {"object": {"metadata": {"ticket_id": str(self.ticket.uuid)}}},
         }
-        mail.outbox = []
         url = reverse("tickets:stripe-webhook")
         response = self.client.post(
             url,
@@ -181,11 +186,14 @@ class TicketTest(APITestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.status, Ticket.Status.PURCHASED)
         self.assertTrue(bool(self.ticket.qr_code))
-        self.assertEqual(len(mail.outbox), 1)
-        sent_email = mail.outbox[0]
-        self.assertIn(str(self.ticket.uuid), sent_email.body)
-        self.assertEqual(sent_email.to, [self.ticket.owner.email])
-        self.assertEqual(len(sent_email.attachments), 1)
+        mock_redis_instance.publish.assert_called_once()
+        args, kwargs = mock_redis_instance.publish.call_args
+        channel_name = args[0]
+        payload = json.loads(args[1])
+        self.assertEqual(channel_name, "notifications")
+        self.assertEqual(payload["ticket_type"], "TICKET_PURCHASED")
+        self.assertEqual(payload["email"], self.ticket.owner.email)
+        self.assertEqual(payload["ticket_uuid"], str(self.ticket.uuid))
 
     def test_verify_purchased_ticket(self):
         self.ticket.status = Ticket.Status.PURCHASED

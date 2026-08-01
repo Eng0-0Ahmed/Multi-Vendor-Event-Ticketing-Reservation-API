@@ -17,7 +17,6 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from .utils import send_ticket_email
 import json
 from .redis_client import get_redis_client
 
@@ -147,7 +146,7 @@ class StripeWebhookView(APIView):
                         redis_client = get_redis_client()
                         qr_url = request.build_absolute_uri(ticket.qr_code.url) if ticket.qr_code else None
                         payload = {
-                            "event_type": "TICKET_PURCHASED",
+                            "ticket_type": "TICKET_PURCHASED",
                             "email": ticket.owner.email,
                             "event_id": str(ticket.ticket_type.ticket_to_event_id),
                             "ticket_uuid": str(ticket.uuid),
