@@ -20,7 +20,9 @@ from django.utils.encoding import force_bytes
 from django.core.mail import send_mail
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+import json, redis
 
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 class RegistrationView(generics.CreateAPIView):
     permission_classes = [AllowAny]
@@ -42,10 +44,15 @@ class SendEmailConfirmationView(APIView):
     def post(self, request, format=None):
         user = request.user
         token = EmailConfirmationToken.objects.create(user=user)
-        send_confirmation_email(email=user.email, token_id=token.pk, user_id=user.pk)
-        return Response(
-            data={"detail": "Confirmation email sent successfully!"}, status=201
-        )
+        # send_confirmation_email(email = user.email, token_id=token.pk, user_id= user.pk)
+        payload = {
+            "event_type": "USER_REGISTRATION_EMAIL",
+            "email": user.email,
+            "token_id": str(token.pk),
+            "user_id": str(user.pk),
+            }
+        redis_client.publish("notifications", json.dumps(payload))
+        return Response(data={"detail": "Confirmation email sent successfully!"}, status=201)
 
 
 class ConfirmEmailView(APIView):
@@ -77,18 +84,26 @@ class RequestResetPasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         user = User.objects.filter(email=email).first()
+
         if user:
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
             token = password_reset_token_generator.make_token(user)
-            reset_url = (
-                f"http://localhost:8000/api/users/reset-password/{uidb64}/{token}/"
-            )
-            send_mail(
-                subject="Password Reset Request",
-                message=f"Click the link to reset your password: {reset_url}",
-                from_email="owner@eventbooking.com",
-                recipient_list=[user.email],
-            )
+        payload = {
+            "event_type": "USER_REGISTRATION_EMAIL",
+            "email": user.email,
+            "token_id": str(token.pk),
+            "user_id": str(user.pk)
+        }
+        redis_client.publish("notifications", json.dumps(payload))
+        #     reset_url = (
+        #         f"http://localhost:8000/api/users/reset-password/{uidb64}/{token}/"
+        #     )
+        #     send_mail(
+        #         subject="Password Reset Request",
+        #         message=f"Click the link to reset your password: {reset_url}",
+        #         from_email="owner@eventbooking.com",
+        #         recipient_list=[user.email],
+        #     )
         return Response(
             {
                 "detail": "If an account with that email exists, a password reset email has been sent."

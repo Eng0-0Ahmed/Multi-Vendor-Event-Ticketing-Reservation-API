@@ -18,6 +18,8 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from .utils import send_ticket_email
+import json
+from .redis_client import get_redis_client
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -110,8 +112,8 @@ class CreateCheckoutSessionView(APIView):
             ],
             mode="payment",
             metadata={"ticket_id": str(ticket.uuid)},
-            success_url="http://localhost:8000/api/tickets/success/",
-            cancel_url="http://localhost:8000/api/tickets/cancel/",
+            success_url="https://ahmedaymen00.pythonanywhere.com/api/tickets/success/",
+            cancel_url="https://ahmedaymen00.pythonanywhere.com/api/cancel/",
         )
         return Response({"checkout_url": session.url}, status=status.HTTP_200_OK)
 
@@ -142,7 +144,17 @@ class StripeWebhookView(APIView):
                         ticket.status = Ticket.Status.PURCHASED
                         ticket.generate_qr_code()
                         ticket.save()
-                        send_ticket_email(ticket)
+                        redis_client = get_redis_client()
+                        qr_url = request.build_absolute_uri(ticket.qr_code.url) if ticket.qr_code else None
+                        payload = {
+                            "event_type": "TICKET_PURCHASED",
+                            "email": ticket.owner.email,
+                            "event_id": str(ticket.ticket_type.ticket_to_event_id),
+                            "ticket_uuid": str(ticket.uuid),
+                            "qr_code_url": qr_url
+                        }
+                        
+                        redis_client.publish("notifications", json.dumps(payload))
 
         return HttpResponse(status=status.HTTP_200_OK)
 
