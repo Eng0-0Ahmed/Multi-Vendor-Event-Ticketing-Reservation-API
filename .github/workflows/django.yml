@@ -9,11 +9,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: ticketing_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.10
+    - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
@@ -25,7 +44,17 @@ jobs:
 
     - name: Run Django Tests
       env:
-        SECRET_KEY: 'ci-secret-key-for-testing'
-        DEBUG: 'True'
+        SECRET_KEY: dummy_key
+        DEBUG: "False"
+        DJANGO_EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+        STRIPE_SECRET_KEY: dummy_stripe_secret_key
+        STRIPE_WEBHOOK_SECRET: dummy_stripe_webhook_secret
+        ALLOWED_HOSTS: localhost,127.0.0.1
+        REDIS_URL: redis://localhost:6379/0
+        DB_NAME: ticketing_db
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_HOST: localhost
+        DB_PORT: 5432
       run: |
         python manage.py test
