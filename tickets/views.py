@@ -146,7 +146,7 @@ class StripeWebhookView(APIView):
                         redis_client = get_redis_client()
                         qr_url = request.build_absolute_uri(ticket.qr_code.url) if ticket.qr_code else None
                         payload = {
-                            "ticket_type": "TICKET_PURCHASED",
+                            "event_type": "TICKET_PURCHASED",
                             "email": ticket.owner.email,
                             "event_id": str(ticket.ticket_type.ticket_to_event_id),
                             "ticket_uuid": str(ticket.uuid),
