@@ -50,7 +50,7 @@ class SendEmailConfirmationView(APIView):
             "token_id": str(token.pk),
             "user_id": str(user.pk),
             }
-        redis_client.publish("notifications", json.dumps(payload))
+        redis_client.rpush("notifications", json.dumps(payload))
         return Response(data={"detail": "Confirmation email sent successfully!"}, status=201)
 
 
@@ -93,7 +93,7 @@ class RequestResetPasswordView(APIView):
             "token_id": str(token),
             "user_id": str(user.pk)
         }
-        redis_client.publish("notifications", json.dumps(payload))
+        redis_client.rpush("notifications", json.dumps(payload))
         #     reset_url = (
         #         f"http://localhost:8000/api/users/reset-password/{uidb64}/{token}/"
         #     )
