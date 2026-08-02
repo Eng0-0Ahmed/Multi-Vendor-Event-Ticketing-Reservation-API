@@ -191,7 +191,7 @@ class TicketTest(APITestCase):
         channel_name = args[0]
         payload = json.loads(args[1])
         self.assertEqual(channel_name, "notifications")
-        self.assertEqual(payload["ticket_type"], "TICKET_PURCHASED")
+        self.assertEqual(payload["event_type"], "TICKET_PURCHASED")
         self.assertEqual(payload["email"], self.ticket.owner.email)
         self.assertEqual(payload["ticket_uuid"], str(self.ticket.uuid))
 

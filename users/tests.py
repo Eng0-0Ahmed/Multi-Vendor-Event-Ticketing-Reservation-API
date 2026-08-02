@@ -160,7 +160,7 @@ class TestEmailVerificationToken(APITestCase):
             password="123",
         )
 
-    @patch('users.views.redis_client.publish')
+    @patch('users.views.redis_client.rpush')
     def test_email_verification_token(self, mock_redis_publish):
         self.client.force_authenticate(user=self.user)
         url = reverse("users:send_email_confirmation")
@@ -189,7 +189,7 @@ class PasswordResetTest(APITestCase):
             password="123",
         )
         self.forgot_url = reverse("users:forgot-password")
-    @patch('users.views.redis_client.publish')
+    @patch('users.views.redis_client.rpush')
     def test_password_request(self, mock_redis_publish):
         forgot_url = reverse("users:forgot-password")
         response = self.client.post(
@@ -200,7 +200,7 @@ class PasswordResetTest(APITestCase):
         args, kwargs = mock_redis_publish.call_args
         self.assertEqual(args[0], "notifications")
 
-    @patch('users.views.redis_client.publish')
+    @patch('users.views.redis_client.rpush')
     def test_reset_password_success(self, mock_redis_publish):
         response = self.client.post(
             self.forgot_url, {"email": "testemail@gmail.com"}, format="json"
