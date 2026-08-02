@@ -88,7 +88,7 @@ class RequestResetPasswordView(APIView):
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
             token = password_reset_token_generator.make_token(user)
         payload = {
-            "event_type": "USER_REGISTRATION_EMAIL",
+            "event_type": "PASSWORD_RESET_EMAIL",
             "email": user.email,
             "token_id": str(token),
             "user_id": str(user.pk)
