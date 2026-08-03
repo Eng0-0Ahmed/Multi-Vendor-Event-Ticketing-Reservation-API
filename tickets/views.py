@@ -153,7 +153,7 @@ class StripeWebhookView(APIView):
                             "qr_code_url": qr_url
                         }
                         
-                        redis_client.publish("notifications", json.dumps(payload))
+                        redis_client.rpush("notifications", json.dumps(payload))
 
         return HttpResponse(status=status.HTTP_200_OK)
 
