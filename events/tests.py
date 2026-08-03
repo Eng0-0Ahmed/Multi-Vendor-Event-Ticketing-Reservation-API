@@ -5,6 +5,8 @@ from rest_framework import status
 from .models import Event
 from django.utils import timezone
 from datetime import timedelta
+import json
+from unittest.mock import patch
 
 User = get_user_model()
 
@@ -51,7 +53,9 @@ class TestEventView(APITestCase):
         self.assertEqual(response.data["description"], "test_description")
         self.assertEqual(response.data["location"], "anywhere")
 
-    def test_create_event(self):
+    @patch("events.views.get_redis_client")
+    def test_create_event(self, mock_get_redis_client):
+        mock_redis_instance = mock_get_redis_client.return_value
         self.user.is_organizer = True
         self.user.save()
         url = reverse("events:event-create")
@@ -67,6 +71,14 @@ class TestEventView(APITestCase):
         self.assertEqual(response.data["description"], "Event Description")
         self.assertEqual(response.data["location"], "Cairo")
         self.assertEqual(response.data["vendor"], self.user.id)
+        mock_redis_instance.rpush.assert_called_once()
+        call_args = mock_redis_instance.rpush.call_args[0]
+        queue_name = call_args[0]
+        sent_payload = json.loads(call_args[1])
+        self.assertEqual(queue_name, "notifications")
+        self.assertEqual(sent_payload["event_type"], "EVENT_CREATED_EMAIL")
+        self.assertEqual(sent_payload["email"], self.user.email)
+        self.assertEqual(sent_payload["event_title"], "New Event")
 
     def test_edit_event(self):
         self.user.is_organizer = True
