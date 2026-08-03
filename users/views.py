@@ -20,8 +20,8 @@ from django.core.mail import send_mail
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 import json, redis
+from notifications.redis_client import get_redis_client
 
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 class RegistrationView(generics.CreateAPIView):
     permission_classes = [AllowAny]
@@ -50,6 +50,7 @@ class SendEmailConfirmationView(APIView):
             "token_id": str(token.pk),
             "user_id": str(user.pk),
             }
+        redis_client = get_redis_client()
         redis_client.rpush("notifications", json.dumps(payload))
         return Response(data={"detail": "Confirmation email sent successfully!"}, status=201)
 
@@ -83,7 +84,6 @@ class RequestResetPasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         user = User.objects.filter(email=email).first()
-
         if user:
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
             token = password_reset_token_generator.make_token(user)
@@ -93,6 +93,7 @@ class RequestResetPasswordView(APIView):
                 "token_id": str(token),
                 "user_id": str(user.pk)
             }
+            redis_client = get_redis_client()
             redis_client.rpush("notifications", json.dumps(payload))
         #     reset_url = (
         #         f"http://localhost:8000/api/users/reset-password/{uidb64}/{token}/"
