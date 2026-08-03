@@ -87,13 +87,13 @@ class RequestResetPasswordView(APIView):
         if user:
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
             token = password_reset_token_generator.make_token(user)
-        payload = {
-            "event_type": "PASSWORD_RESET_EMAIL",
-            "email": user.email,
-            "token_id": str(token),
-            "user_id": str(user.pk)
-        }
-        redis_client.rpush("notifications", json.dumps(payload))
+            payload = {
+                "event_type": "PASSWORD_RESET_EMAIL",
+                "email": user.email,
+                "token_id": str(token),
+                "user_id": str(user.pk)
+            }
+            redis_client.rpush("notifications", json.dumps(payload))
         #     reset_url = (
         #         f"http://localhost:8000/api/users/reset-password/{uidb64}/{token}/"
         #     )
