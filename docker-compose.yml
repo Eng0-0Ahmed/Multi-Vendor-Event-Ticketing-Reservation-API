@@ -19,7 +19,7 @@ services:
     environment:
       - POSTGRES_DB=DB_ticket
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=pass123
+      - POSTGRES_PASSWORD=EngAhmed93!
     ports:
       - "5432:5432"
 
