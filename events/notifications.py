@@ -44,15 +44,15 @@ def send_remaining_ticket_promos():
         ticket_to_event__status="published",
     ).select_related("ticket_to_event")
 
-    redis_client = get_redis_client
+    redis_client = get_redis_client()
 
     if not available_ticket_types.exists():
         return
-    target_users = User.objects.filter(is_active=True, is_organizer=False).exclude(tickets__ticket_type__ticket_to_event=event)
+   
 
     for ticket_type in available_ticket_types:
         event = ticket_type.ticket_to_event
-
+        target_users = User.objects.filter(is_active=True, is_organizer=False).exclude(tickets__ticket_type__ticket_to_event=event)
         for user in target_users:
             payload = {
                 "event_type": "PROMO_REMAINING_TICKETS",
