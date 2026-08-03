@@ -19,7 +19,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import json
 from .redis_client import get_redis_client
-
+from users.permissions import IsEventOwner
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
@@ -159,7 +159,7 @@ class StripeWebhookView(APIView):
 
 
 class VerifyTicketView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEventOwner]
 
     def post(self, request):
         qr_data = request.data.get("qr_data", "")
