@@ -3,4 +3,4 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "ticket_vendor_event.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "Ticket_Vendor_Event.wsgi:application"]
