@@ -19,6 +19,7 @@ class EventSerializer(serializers.ModelSerializer):
             "id",
             "vendor_first_name",
             "vendor_family_name",
+            "uuid",
         ]
         read_only_fields = ["id", "vendor", "created_at"]
 
