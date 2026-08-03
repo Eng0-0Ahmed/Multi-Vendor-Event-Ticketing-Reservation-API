@@ -10,10 +10,11 @@ from django.utils import timezone
 
 User = get_user_model()
 
-now = timezone.now()
-in_24h = now + timedelta(hours=24)
+
 
 def send_24h_event_reminders():
+    now = timezone.now()
+    in_24h = now + timedelta(hours=24)
     tickets = Ticket.objects.filter(
         ticket_type__ticket_to_event__event_date__gte=now,
         ticket_type__ticket_to_event__event_date__lte=in_24h,
@@ -37,6 +38,8 @@ def send_24h_event_reminders():
 
 
 def send_remaining_ticket_promos():
+    now = timezone.now()
+    in_24h = now + timedelta(hours=24)
     available_ticket_types = TicketType.objects.filter(
         available_quantity__gte=1,  
         ticket_to_event__event_date__gte=now,
