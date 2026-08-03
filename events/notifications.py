@@ -1,6 +1,5 @@
 from .models import Event
 from tickets.models import Ticket, TicketType
-from users.models import User
 import json
 from notifications.redis_client import get_redis_client
 from datetime import timedelta
