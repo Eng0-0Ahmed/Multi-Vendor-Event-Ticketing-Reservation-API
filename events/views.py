@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from users.permissions import IsOrganizer, IsEventOwner
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
+import json
+from notifications.redis_client import get_redis_client
 
 
 class EventListView(generics.ListAPIView):
@@ -46,7 +48,16 @@ class EventCreateView(generics.CreateAPIView):
     serializer_class = EventSerializer
 
     def perform_create(self, serializer):
-        serializer.save(vendor=self.request.user)
+        event = serializer.save(vendor=self.request.user)
+
+        redis_client = get_redis_client()
+        payload = {
+            "event_type":"EVENT_CREATED_EMAIL",
+            "email": self.request.user.email,
+            "event_uuid": str(event.uuid),
+            "event_title": event.title,
+        }
+        redis_client.rpush("notifications", json.dumps(payload))
 
 
 class EventEditView(generics.UpdateAPIView):
