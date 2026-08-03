@@ -17,9 +17,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_DB=DB_ticket
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=EngAhmed93!
+      - POSTGRES_DB=${DB_NAME:-ticket_db}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
     ports:
       - "5432:5432"
 
