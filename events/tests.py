@@ -7,6 +7,8 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 from unittest.mock import patch
+from tickets.models import TicketType
+from django.core.management import call_command
 
 User = get_user_model()
 
@@ -209,3 +211,44 @@ class TestEventSerializer(APITestCase):
         response = self.client.post(url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("event_date", response.data)
+
+
+class NotificationJobTest(APITestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            first_name="testuser", 
+            email="test@example.com",
+            password="password123", 
+            is_active=True,
+            is_organizer=False
+        )
+
+        self.user2 =  User.objects.create_user(
+            first_name="test", email="test1232421@example.com", password="password123", is_active=True, is_organizer= True
+        )
+
+        self.event = Event.objects.create(
+            title="Dummy",
+            event_date=timezone.now() + timedelta(hours=12),
+            status="published",
+            vendor= self.user2
+        )
+
+        self.ticket_type = TicketType.objects.create(
+            ticket_to_event=self.event,
+            ticket_tier="VIP",
+            price=100.00,
+            available_quantity=5,
+            total_quantity=100,
+            sales_start_at=timezone.now() - timedelta(days= 15),
+            sales_ended_at=timezone.now() + timedelta(hours=12),
+        )
+
+    @patch("events.notifications.get_redis_client")
+    def test_run_notification_jobs_pushes_to_redis(self, mock_get_redis_client):
+        mock_redis = mock_get_redis_client.return_value
+        call_command("run_notification_jobs")
+        mock_redis.rpush.assert_called_once()
+        call_args = mock_redis.rpush.call_args_list
+        self.assertEqual(call_args[0][0][0], "notifications")
