@@ -186,8 +186,8 @@ class TicketTest(APITestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.status, Ticket.Status.PURCHASED)
         self.assertTrue(bool(self.ticket.qr_code))
-        mock_redis_instance.publish.assert_called_once()
-        args, kwargs = mock_redis_instance.publish.call_args
+        mock_redis_instance.rpush.assert_called_once()
+        args, kwargs = mock_redis_instance.rpush.call_args
         channel_name = args[0]
         payload = json.loads(args[1])
         self.assertEqual(channel_name, "notifications")
