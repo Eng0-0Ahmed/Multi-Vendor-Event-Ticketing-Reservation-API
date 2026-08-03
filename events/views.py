@@ -56,7 +56,7 @@ class EventCreateView(generics.CreateAPIView):
             "email": self.request.user.email,
             "event_uuid": str(event.uuid),
             "event_title": event.title,
-            "event_vendor": event.vendor,
+            "event_vendor": str(event.vendor),
         }
         redis_client.rpush("notifications", json.dumps(payload))
 
