@@ -9,6 +9,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from users.tokens import password_reset_token_generator
+from notifications.redis_client import get_redis_client
+
 User = get_user_model()
 
 
@@ -160,13 +162,13 @@ class TestEmailVerificationToken(APITestCase):
             password="123",
         )
 
-    @patch('users.views.redis_client.rpush')
-    def test_email_verification_token(self, mock_redis_publish):
+    @patch('users.views.get_redis_client')
+    def test_email_verification_token(self, mock_redis_client):
         self.client.force_authenticate(user=self.user)
         url = reverse("users:send_email_confirmation")
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        mock_redis_publish.assert_called_once()
+        mock_redis_client.assert_called_once()
         token = default_token_generator.make_token(self.user)
         self.assertIsNotNone(token)
 
@@ -189,19 +191,18 @@ class PasswordResetTest(APITestCase):
             password="123",
         )
         self.forgot_url = reverse("users:forgot-password")
-    @patch('users.views.redis_client.rpush')
-    def test_password_request(self, mock_redis_publish):
+    @patch('users.views.get_redis_client')
+    def test_password_request(self, mock_redis_client):
         forgot_url = reverse("users:forgot-password")
         response = self.client.post(
             forgot_url, {"email": "testemail@gmail.com"}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mock_redis_publish.assert_called_once()
-        args, kwargs = mock_redis_publish.call_args
-        self.assertEqual(args[0], "notifications")
+        mock_redis_client.assert_called_once()
+        args, kwargs = mock_redis_client.call_args
 
-    @patch('users.views.redis_client.rpush')
-    def test_reset_password_success(self, mock_redis_publish):
+    @patch('users.views.get_redis_client')
+    def test_reset_password_success(self, mock_redis_client):
         response = self.client.post(
             self.forgot_url, {"email": "testemail@gmail.com"}, format="json"
         )
@@ -214,6 +215,8 @@ class PasswordResetTest(APITestCase):
         response = self.client.post(
         reset_url, {"password": "NewPassword123"}, format="json"
     )
+        mock_redis_client.assert_called_once()
+        args, kwargs = mock_redis_client.call_args
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("NewPassword123"))
