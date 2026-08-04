@@ -1,111 +1,255 @@
-# Multi-Vendor Event Ticketing & Reservation API
+# Multi-Vendor Event Ticketing API
 
-A production-ready Django REST Framework API for multi-vendor event ticketing, dynamic seat reservations, Stripe checkout integration, automated QR-code generation, and venue entry verification.
+A Django backend, built with production concerns in mind, for event platforms where multiple vendors sell tickets to the same shows without stepping on each other's toes—literally. No overselling, no race conditions, no 2am support calls about double-charged customers.
 
-**Live Interactive API Documentation (Swagger):** [ahmedaymen00.pythonanywhere.com/api/docs/](https://ahmedaymen00.pythonanywhere.com/api/docs/)
+## Why I built this
 
----
+I got tired of systems that *looked* concurrent-safe until they weren't. Ticket platforms are a perfect storm: high volume, tight inventory, money involved, and everyone buying tickets at the exact same moment. Most examples online either ignore this entirely or hand-wave it away.
 
-## Overview
+This project treats concurrency as a first-class problem. The database row-level locking isn't a band-aid—it's the foundation. Real Stripe integration means we're not pretending payment is simple. And the notification system is decoupled because email should never block a customer's purchase confirmation.
 
-This API powers a scalable event management platform. Multiple vendors can publish and manage events, users can securely reserve and purchase tickets, and venue staff can verify tickets at the door using QR code scanning.
+It's not a toy. It's also not overengineered for problems that don't exist yet.
 
----
+## What makes this different
 
-## Key Features & Technical Highlights
+**Atomic reservations under load.** Two customers can't both grab the last ticket because `SELECT FOR UPDATE` locks the row, and PostgreSQL enforces it. You can hammer this with concurrent requests and inventory stays correct.
 
-* **Multi-Vendor Management:** Role-based permissions allowing vendors to publish events, adjust capacities, and track ticket availability.
-* **Stripe Payment & Webhook Processing:** Integrates Stripe Checkout with asynchronous webhook handling (`checkout.session.completed`) using cryptographic signature verification to ensure secure order fulfillment.
-* **Automated QR Generation & Email Delivery:** Automatically generates unique QR codes upon payment confirmation and emails tickets directly to buyers.
-* **Gate Verification Endpoint:** Fast indexed lookup endpoint (`POST /api/tickets/verify/`) for venue staff to validate scanned QR codes and prevent reuse.
-* **Comprehensive Test Suite:** Unit and integration tests covering authentication, event creation, locking logic, and checkout flows across all modules (`users`, `events`, and `tickets`).
-* **Interactive API Docs:** Auto-generated OpenAPI 3.0 schema and interactive Swagger UI powered by `drf-spectacular`.
+**Stripe done right.** This uses webhook signature verification, idempotent payment updates (same webhook called twice? doesn't matter), and embeds payment metadata in a way that doesn't trust the client. No accidental double-charging because a webhook retried.
 
----
+**Notifications that don't break the system.** When someone buys a ticket, a job goes onto Redis. A separate FastAPI service picks it up and sends the email. If email is slow, timing out, or down? The ticket purchase already completed. Customers see their confirmation instantly.
 
-### Performance & Database Optimization
+**Tickets have a real lifecycle.** Reserved → Purchased → Used → Cancelled. A scheduled task automatically expires unpaid reservations after a timeout so seats don't get held indefinitely. The state machine isn't just in comments; it's enforced in the database.
 
-* **Query Optimization (N+1 Problem Fix):** Used `select_related` for foreign key relationships (e.g., fetching Events with Venues) and `prefetch_related` for many-to-many relationships (e.g., Tickets and Orders) to reduce database queries from `O(N)` down to a single constant-time query (`O(1)`) per request.
-* **Race-Condition, Double-Booking Guards & Concurrency Control:** Uses atomic database transactions (`transaction.atomic`) and row-level locking (`select_for_update`) with expiring reservation timers to prevent double-booking during high-concurrency ticket drops.
-* **Indexed Lookups:** Leveraged database indexing on high-frequency query fields (like QR code verification tokens) to ensure rapid response times during event entry validation.
+**Built for humans.** Soft deletes so you never accidentally nuke data. Check constraints at the database level so bad data can't sneak in. JWT authentication that actually works. Role-based permissions—organizers can only see their own events. The API docs auto-generate from code and stay up-to-date.
 
-### Security & Reliability
+## Architecture
 
-* **Stripe Webhook Signature Verification:** Implemented cryptographic signature checks on incoming payment webhooks to prevent spoofing and unauthorized ticket fulfillment.
-* **Role-Based Access Control (RBAC):** Restricted vendor actions (event management, capacity overrides) and staff operations (ticket validation) using custom Django REST Framework permission classes.
-* **JWT Authentication & Token Security:** Secured API endpoints using JSON Web Tokens (JWT) with strict expiration policies and secure key storage.
-* **Idempotency & Double-Spend Guards:** Protected ticket reservation state machines against double-booking and duplicate payment processing using atomic database locks.
+**The ticket API** handles reservations, payments, and all the business logic. It talks to PostgreSQL (where row-level locking keeps inventory safe from race conditions).
 
-## Tech Stack
+When a ticket sells, instead of trying to send an email right there, the API just drops an event onto a Redis queue. Done. The customer sees their confirmation instantly.
 
-* **Language:** Python 3.12+
-* **Framework:** Django 5 & Django REST Framework (DRF)
-* **Database:** SQLite (Development) / PostgreSQL (Production)
-* **Libraries & Integrations:** Stripe API, Pillow, `qrcode`
-* **Documentation:** `drf-spectacular` (Swagger UI)
-* **Formatting:** `black`
+**The notification service** sits on the other end of that Redis queue. It's a separate FastAPI app that pulls events and sends emails. If email is slow, timing out, or the service is down for maintenance—doesn't matter. The ticket purchase already happened. Customers never see the delay.
 
----
+This split means:
+- Scale the ticket API independently of email sending
+- Emails never block a purchase (slow SMTP server? not your problem)
+- You can deploy, restart, or update each service without touching the other
+- Easy to test—mock the Redis queue and both services work offline
 
-## Key API Endpoints
+See the [notification service repo](link-to-repo) for the email half of this.
 
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/users/register/` | Register a new user account | No |
-| `GET` | `/api/events/` | List all published events | No |
-| `POST` | `/api/tickets/types/<uuid>/reserve/` | Reserve a ticket tier (Row-locked) | Yes |
-| `POST` | `/api/tickets/<uuid>/checkout/` | Create a Stripe Checkout session | Yes |
-| `POST` | `/api/tickets/stripe/webhook/` | Listen for Stripe payment events | No (Stripe Sig) |
-| `POST` | `/api/tickets/verify/` | Scan and verify venue QR code | Staff / Vendor |
-| `GET` | `/api/docs/` | Interactive Swagger API documentation | No |
+## Quick start
 
----
+### Prerequisites
+- Docker & Docker Compose
+- Or: Python 3.11+, PostgreSQL, Redis
 
-## Getting Started
+### Running locally
 
-### 1. Installation & Setup
-
-Clone the repository and enter the directory:
-\`\`\`bash
-git clone https://github.com/Eng0-0Ahmed/Multi-Vendor-Event-Ticketing-Reservation-API.git
-cd Multi-Vendor-Event-Ticketing-Reservation-API
-\`\`\`
-
-Set up and activate a virtual environment:
-\`\`\`bash
-# On Windows:
-python -m venv venv
-venv\Scripts\activate
-
-# On Mac/Linux:
-python3 -m venv venv
-source venv/bin/activate
-\`\`\`
-
-Install dependencies:
-\`\`\`bash
-pip install -r requirements.txt
-\`\`\`
-
-Set up environment variables:
-\`\`\`bash
-# Copy example env file
+```bash
+git clone <your-repo-url>
+cd event-ticketing
 cp .env.example .env
-\`\`\`
+# Edit .env with your Stripe keys and database credentials
+docker compose up --build
+```
 
-Run database migrations and start the development server:
-\`\`\`bash
-python manage.py migrate
-python manage.py runserver
-\`\`\`
+In a separate terminal, run migrations (not automatic on container startup):
 
-Access the interactive API documentation at `http://127.0.0.1:8000/api/docs/`.
+```bash
+docker compose exec web python manage.py migrate
+```
 
----
+API is at `http://localhost:8000/`. Docs are at `/api/docs/`.
 
-## Running Tests
+### First time setup
 
-To run the full test suite across all apps (`users`, `events`, and `tickets`):
-\`\`\`bash
+```bash
+# Run migrations (not automatic on startup — do this first)
+docker compose exec web python manage.py migrate
+
+# Create a superuser for the admin panel
+docker compose exec web python manage.py createsuperuser
+```
+
+## Environment variables
+
+Copy `.env.example` and fill in your values:
+
+```bash
+# Django
+SECRET_KEY=your-secret-key-here
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Database
+DB_NAME=ticketing
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_HOST=db
+DB_PORT=5432
+
+# Redis (for task queue)
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Stripe (get these from your Stripe dashboard)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Note: this service and the notification service don't talk over HTTP —
+they're only connected through the shared Redis queue (`REDIS_HOST`/
+`REDIS_PORT` above), so there's no notification service URL to configure
+here.
+
+## API overview
+
+Interactive documentation once the server is running:
+
+- **Swagger UI:** `http://localhost:8000/api/docs/`
+- **ReDoc:** `http://localhost:8000/api/redoc/`
+- **OpenAPI schema:** `http://localhost:8000/api/schema/`
+
+### Core endpoints
+
+**Authentication**
+```
+POST   /api/users/register/              Create account
+POST   /api/users/token/                 Get JWT tokens
+POST   /api/users/token/refresh/         Refresh access token
+```
+
+**Events** (as an organizer)
+```
+GET    /api/events/                      List all events
+POST   /api/events/create/               Create a new event (organizer only)
+GET    /api/events/{id}/                 Get event details
+PATCH  /api/events/{id}/edit             Update your event
+```
+
+**Tickets**
+```
+GET    /api/tickets/types/               List ticket types for an event
+POST   /api/tickets/types/{id}/reserve/  Reserve a ticket (holds it for 10 mins)
+POST   /api/tickets/{id}/checkout/       Create Stripe checkout session
+POST   /api/tickets/verify/              Verify/check-in a ticket (QR data in request body)
+```
+
+**Webhooks** (Stripe only)
+```
+POST   /api/tickets/stripe/webhook/      Stripe payment updates
+```
+
+See the Swagger docs for the full list, response formats, and what each field means.
+
+## Real-world example: buying a ticket
+
+```bash
+# 1. Get an access token
+curl -X POST http://localhost:8000/api/users/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "password123"}'
+
+# Response includes access_token
+
+# 2. Reserve a ticket type (holds for 10 minutes)
+curl -X POST http://localhost:8000/api/tickets/types/42/reserve/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"quantity": 1}'
+
+# Response: ticket ID, expiry time, price
+
+# 3. Create a Stripe checkout session
+curl -X POST http://localhost:8000/api/tickets/123/checkout/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Response: redirect_url
+
+# 4. User goes to Stripe, pays
+# Stripe webhook comes back → ticket marked purchased → email sent
+
+# 5. User gets a ticket they can scan at the door
+```
+
+## Testing
+
+Run the test suite locally:
+
+```bash
 python manage.py test
-\`\`\`
+```
+
+Or in Docker:
+
+```bash
+docker compose exec web python manage.py test
+```
+
+Tests cover:
+- Concurrent reservation scenarios (the hard part)
+- Stripe webhook handling and idempotency
+- User permissions and authentication
+- State machine transitions
+- Edge cases like expired reservations
+
+## How concurrency actually works
+
+When a customer reserves a ticket:
+
+```python
+with transaction.atomic():
+    ticket_type = TicketType.objects.select_for_update().get(id=type_id)
+    
+    if ticket_type.available_count > 0:
+        reservation = Reservation.objects.create(ticket_type=ticket_type, ...)
+        ticket_type.available_count -= 1
+        ticket_type.save()
+    else:
+        raise OutOfStock()
+```
+
+The `select_for_update()` locks the row at the database level. Other transactions *wait* until this one finishes. No two customers can both see 1 ticket left and both reserve it.
+
+This isn't magic—it's just how databases work. But it matters because most tutorials don't bother.
+
+## Stripe integration details
+
+When payment completes:
+
+1. Stripe calls our webhook with a cryptographic signature
+2. We verify the signature against `STRIPE_WEBHOOK_SECRET` (not trusting the request itself)
+3. We mark the reservation as purchased and create the actual ticket
+4. We push a notification event onto Redis
+5. The notification service picks it up and sends the email
+
+If the webhook comes in twice (Stripe retries), we idempotently update the same ticket. No duplicate charges, no double emails.
+
+## Design decisions
+
+**Stripe Checkout redirect instead of embedded form.** This is intentional. Embedded checkout adds complexity, requires careful PCI compliance thinking, and the redirect approach is battle-tested. Simplicity over false convenience.
+
+**Row-level database locking for concurrency.** This works. It scales. It's boring in the best way. I didn't add Redis-based locking or distributed consensus because the database already does this correctly.
+
+**Vendor signup without verification.** The system is built to support a verification flow—you'd add identity checks, email verification, and manual approval without touching core logic. Left it out because it's not part of what makes this interesting technically.
+
+## Deployment
+
+The included `docker-compose.yml` is for local development. For production:
+
+- Use a managed PostgreSQL instance (AWS RDS, Render, Railway, etc.)
+- Use a managed Redis (AWS ElastiCache, Render, etc.)
+- Swap Docker Compose for Kubernetes, Docker Swarm, or a platform like Railway/Render
+- Set `DEBUG=False` and use a real `SECRET_KEY`
+- Set up SSL/TLS (handled by your reverse proxy or platform)
+- Run migrations before deploying: `python manage.py migrate`
+- Collect static files: `python manage.py collectstatic --noinput`
+
+## License
+
+MIT
+
+## Questions?
+
+Open an issue or check the Swagger docs at `/api/docs/` for endpoint details.
