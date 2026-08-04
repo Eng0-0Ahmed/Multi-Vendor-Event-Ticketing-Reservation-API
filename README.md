@@ -2,6 +2,12 @@
 
 A Django backend, built with production concerns in mind, for event platforms where multiple vendors sell tickets to the same shows without stepping on each other's toes—literally. No overselling, no race conditions, no 2am support calls about double-charged customers.
 
+## Live Demo & Documentation
+
+Experience the API directly through the live production environment. You can explore interactive endpoints, test requests, and view full schema specifications without setting up a local environment.
+
+https://multi-vendor-event-ticketing-reservation-api-production.up.railway.app/api/docs/
+
 ## Why I built this
 
 I got tired of systems that *looked* concurrent-safe until they weren't. Ticket platforms are a perfect storm: high volume, tight inventory, money involved, and everyone buying tickets at the exact same moment. Most examples online either ignore this entirely or hand-wave it away.
