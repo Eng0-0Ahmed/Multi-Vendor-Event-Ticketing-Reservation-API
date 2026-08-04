@@ -36,7 +36,7 @@ This split means:
 - You can deploy, restart, or update each service without touching the other
 - Easy to test—mock the Redis queue and both services work offline
 
-See the [notification service repo](link-to-repo) for the email half of this.
+See the [notification service repo](https://github.com/Eng0-0Ahmed/Notification-Service) for the email half of this.
 
 ## Quick start
 
@@ -47,10 +47,9 @@ See the [notification service repo](link-to-repo) for the email half of this.
 ### Running locally
 
 ```bash
-git clone <your-repo-url>
+git clone <https://github.com/Eng0-0Ahmed/Multi-Vendor-Event-Ticketing-Reservation-API>
 cd event-ticketing
 cp .env.example .env
-# Edit .env with your Stripe keys and database credentials
 docker compose up --build
 ```
 
