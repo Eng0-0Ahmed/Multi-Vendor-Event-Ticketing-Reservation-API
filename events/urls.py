@@ -5,6 +5,7 @@ from .views import (
     EventDetailView,
     EventEditView,
     EventDeleteView,
+    VendorEventListView
 )
 
 app_name = "events"
@@ -15,4 +16,5 @@ urlpatterns = [
     path("<uuid:uuid>/", EventDetailView.as_view(), name="event-detail"),
     path("<uuid:uuid>/edit", EventEditView.as_view(), name="event-edit"),
     path("<uuid:uuid>/delete/", EventDeleteView.as_view(), name="event-delete"),
+    path("vendor/",VendorEventListView.as_view(), name= "vendor-list"),
 ]

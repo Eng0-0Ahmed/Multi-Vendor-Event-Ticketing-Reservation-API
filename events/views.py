@@ -84,4 +84,4 @@ class VendorEventListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsOrganizer]
 
     def get_queryset(self):
-        return Event.objects.filter(vendor=self.request.user)
+        return Event.objects.filter(vendor=self.request.user).select_related("vendor")
