@@ -42,3 +42,4 @@ urllib3==2.7.0
 whitenoise==6.12.0
 python-dotenv
 gunicorn>=21.2.0
+coverage==7.15.4
