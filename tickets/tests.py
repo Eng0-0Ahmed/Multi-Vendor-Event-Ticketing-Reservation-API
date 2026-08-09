@@ -11,6 +11,10 @@ from unittest.mock import patch, MagicMock
 import os
 from django.conf import settings
 import json
+from django.test import TransactionTestCase
+import threading
+from django.db import connection
+from rest_framework.test import APIClient
 
 User = get_user_model()
 
@@ -251,3 +255,67 @@ class QueryTest(APITestCase):
         url = reverse("tickets:my-ticket-list")
         with self.assertNumQueries(2):
             self.client.get(url)
+            
+class ConcurrencyTest(TransactionTestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="testemail@gmail.com",
+            first_name="test_name",
+            family_name="family_test",
+            password="123",
+            is_active=True,
+            is_organizer =True,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.event = Event.objects.create(
+            vendor=self.user,
+            title="test",
+            description="test_description",
+            location="anywhere",
+            event_date=timezone.now() + timedelta(days=20),
+        )
+        self.ticket_type = TicketType.objects.create(
+            ticket_tier="dummy",
+            ticket_to_event=self.event,
+            available_quantity=5,
+            total_quantity=100,
+            price=10.90,
+            sales_start_at=timezone.now(),
+            sales_ended_at=timezone.now() + timedelta(days=10),
+        )
+        self.results = []
+        self.lock = threading.Lock()
+    def attempt_reserve(self, barrier, user):
+        barrier.wait()
+        try:
+            ticket_type = self.ticket_type
+            ticket_type.reserve_ticket(user=user)  
+            outcome = "success"
+        except Exception:
+            outcome = "failed"
+        finally:
+            connection.close()
+        with self.lock:
+            self.results.append(outcome)
+    def test_concurrent_ticket_reservations(self):
+        num_threads = 50
+        barrier = threading.Barrier(num_threads)
+        threads = []
+        
+        for i in range(num_threads):
+            user = User.objects.create_user(
+                    email=f"testemail{i}@gmail.com",
+                    first_name="test_name",
+                    family_name="family_test",
+                    password="123",
+                    is_active=True,
+                    )
+            t = threading.Thread(target=self.attempt_reserve, args=(barrier, user))
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+        self.assertEqual(self.results.count("success"), 5)
+        self.assertEqual(self.results.count("failed"), 395)
