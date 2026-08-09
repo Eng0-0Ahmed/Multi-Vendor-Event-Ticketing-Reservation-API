@@ -111,8 +111,8 @@ class CreateCheckoutSessionView(APIView):
             ],
             mode="payment",
             metadata={"ticket_id": str(ticket.uuid)},
-            success_url="https://ahmedaymen00.pythonanywhere.com/api/tickets/success/",
-            cancel_url="https://ahmedaymen00.pythonanywhere.com/api/cancel/",
+            success_url="https://multi-vendor-event-ticketing-reservation-api-production.up.railway.app/api/tickets/success/",
+            cancel_url="https://multi-vendor-event-ticketing-reservation-api-production.up.railway.app/cancel/",
         )
         return Response({"checkout_url": session.url}, status=status.HTTP_200_OK)
 
