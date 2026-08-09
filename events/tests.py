@@ -252,3 +252,32 @@ class NotificationJobTest(APITestCase):
         mock_redis.rpush.assert_called_once()
         call_args = mock_redis.rpush.call_args_list
         self.assertEqual(call_args[0][0][0], "notifications")
+
+class QueryTest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="testemail@gmail.com",
+            first_name="test_name",
+            family_name="family_test",
+            password="123",
+            is_organizer = True
+        )
+        self.user.is_active = True
+        self.client.force_authenticate(user=self.user)
+        self.user.save()
+        for i in range(10):
+            Event.objects.create(
+            vendor=self.user,
+            title=f"event_{i}",
+            description="test_description",
+            location="anywhere",
+            event_date=timezone.now() + timedelta(days=1),
+            )
+    def test_vendor_event_list_query_count(self):
+        url = reverse("events:vendor-list")
+        with self.assertNumQueries(2):
+            self.client.get(url)
+    def test_event_list_query_count(self):
+        url = reverse("events:event-list")
+        with self.assertNumQueries(2):
+            self.client.get(url)
