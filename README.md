@@ -28,6 +28,19 @@ It's not a toy. It's also not overengineered for problems that don't exist yet.
 
 **Built for humans.** Soft deletes so you never accidentally nuke data. Check constraints at the database level so bad data can't sneak in. JWT authentication that actually works. Role-based permissions—organizers can only see their own events. The API docs auto-generate from code and stay up-to-date.
 
+## Verified query performance
+
+Listing endpoints are covered by `assertNumQueries` tests that lock the query count 
+regardless of dataset size — this catches N+1 regressions in CI, not just at review time.
+
+- Vendor event list: flat at 2 queries, tested against 10 events
+- Buyer ticket list: flat at 2 queries, tested against 50 ticket types / 50 tickets, 
+  including nested ticket-type data in the response via DRF's PK-only field 
+  optimization (no extra query per related object)
+
+If a future serializer change accidentally triggers a per-row lookup, these tests fail 
+immediately instead of degrading silently under load.
+
 ## Architecture
 
 **The ticket API** handles reservations, payments, and all the business logic. It talks to PostgreSQL (where row-level locking keeps inventory safe from race conditions).
