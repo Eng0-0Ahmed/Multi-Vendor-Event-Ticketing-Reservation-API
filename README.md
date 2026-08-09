@@ -28,6 +28,12 @@ It's not a toy. It's also not overengineered for problems that don't exist yet.
 
 **Built for humans.** Soft deletes so you never accidentally nuke data. Check constraints at the database level so bad data can't sneak in. JWT authentication that actually works. Role-based permissions—organizers can only see their own events. The API docs auto-generate from code and stay up-to-date.
 
+## Testing
+
+46 automated tests across the Django test suite, covering concurrent reservation scenarios, 
+Stripe webhook idempotency, permissions, state-machine transitions, and query performance — 
+run in CI on every push (`docker compose exec web python manage.py test`).
+
 ## Verified query performance
 
 Listing endpoints are covered by `assertNumQueries` tests that lock the query count 
