@@ -33,13 +33,13 @@ class EventListView(generics.ListAPIView):
     ordering = ["event_date"]
 
     def get_queryset(self):
-        return Event.objects.filter(status="published")
+        return Event.objects.filter(status="published").select_related("vendor")
 
 
 class EventDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EventSerializer
-    queryset = Event.objects.all()
+    queryset = Event.objects.all().select_related("vendor")
     lookup_field = "uuid"
 
 
