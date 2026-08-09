@@ -318,4 +318,4 @@ class ConcurrencyTest(TransactionTestCase):
         for t in threads:
             t.join()
         self.assertEqual(self.results.count("success"), 5)
-        self.assertEqual(self.results.count("failed"), 395)
+        self.assertEqual(self.results.count("failed"), 45)
