@@ -34,6 +34,9 @@ It's not a toy. It's also not overengineered for problems that don't exist yet.
 Stripe webhook idempotency, permissions, state-machine transitions, and query performance — 
 run in CI on every push (`docker compose exec web python manage.py test`).
 
+Test coverage: 95% overall (92% excluding the test files themselves), measured with 
+`docker compose exec web coverage run manage.py test && docker compose exec web coverage report`.
+
 ## Verified query performance
 
 Listing endpoints are covered by `assertNumQueries` tests that lock the query count 
