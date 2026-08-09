@@ -26,7 +26,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 class TicketListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TicketTypeSerializer
-    queryset = TicketType.objects.select_related("ticket_to_event").all()
+    queryset = TicketType.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["ticket_tier"]
     search_fields = ["ticket_tier"]
