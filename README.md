@@ -37,7 +37,7 @@ run in CI on every push (`docker compose exec web python manage.py test`).
 Test coverage: 95% overall (92% excluding the test files themselves), measured with 
 `docker compose exec web coverage run manage.py test && docker compose exec web coverage report`.
 
-### Concurrency & Load Verification
+## Concurrency & Load Verification
 
 Tested against a high-concurrency ticket release scenario (400 concurrent reservation requests competing for 5 available seats):
 
