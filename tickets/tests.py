@@ -213,3 +213,41 @@ class TicketTest(APITestCase):
         response = self.client.post(url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("already been used", response.data["detail"])
+
+
+    
+class QueryTest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="testemail@gmail.com",
+            first_name="test_name",
+            family_name="family_test",
+            password="123",
+            is_active=True,
+        )
+        self.client.force_authenticate(user=self.user)
+        self.event = Event.objects.create(
+            vendor=self.user,
+            title="test",
+            description="test_description",
+            location="anywhere",
+            event_date=timezone.now() + timedelta(days=20),
+        )
+        for i in range(50):
+            ticket_type = TicketType.objects.create(
+                ticket_tier=f"dummy_{i}",
+                ticket_to_event=self.event,
+                available_quantity=100,
+                total_quantity=190,
+                price=10.90,
+                sales_start_at=timezone.now(),
+                sales_ended_at=timezone.now() + timedelta(days=10),
+            )
+            Ticket.objects.create(
+                ticket_type=ticket_type, 
+                owner=self.user
+            )
+    def test_my_ticket_list(self):
+        url = reverse("tickets:my-ticket-list")
+        with self.assertNumQueries(2):
+            self.client.get(url)
