@@ -61,14 +61,24 @@ def search_tickets_and_events(
     query_text: str, n_results: int = 3, doc_type: str = None
 ):
     collection = get_vector_collection() 
-    where_clause = {"doc_type": doc_type} if doc_type else None
-
-    results = collection.query(
-        query_texts=[query_text],
-        n_results=n_results,
-        where=where_clause,
-        include=["documents", "metadatas", "distances"],
-    )
+    if doc_type:
+        where_clause = {
+            "$and": [
+                {"status": "published"},
+                {"doc_type": doc_type}
+            ]
+        }
+    else:
+        where_clause = {"status": "published"}
+    try:
+        results = collection.query(
+            query_texts=[query_text],
+            n_results=n_results,
+            where=where_clause,
+            include=["documents", "metadatas", "distances"],
+        )
+    except Exception:
+        return {"documents": [], "metadatas": [], "distances": []}
 
     matched_metadatas = results["metadatas"][0] if results.get("metadatas") else []
     matched_documents = results["documents"][0] if results.get("documents") else []
