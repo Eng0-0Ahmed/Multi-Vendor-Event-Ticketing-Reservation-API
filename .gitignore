@@ -15,3 +15,5 @@ staticfiles/
 .coverage
 .coverage.*
 htmlcov/
+
+chroma_db*
