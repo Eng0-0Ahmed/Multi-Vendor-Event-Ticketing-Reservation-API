@@ -2,9 +2,20 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from unittest.mock import patch
 from django.urls import reverse
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class BotServiceAPITests(APITestCase):
     def setUp(self):
+        self.user = User.objects.create_user(
+            email="testemail@gmail.com",
+            first_name="test_name",
+            family_name="family_test",
+            password="123",
+            is_active=True,
+        )
+        self.client.force_authenticate(user=self.user)
         self.url = reverse("bot_services:bot-chat")
     @patch('bot_services.views.search_tickets_and_events')
     @patch('bot_services.views.client.models.generate_content')

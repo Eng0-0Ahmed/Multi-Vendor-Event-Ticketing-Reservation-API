@@ -7,8 +7,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from services.vector_service import search_tickets_and_events
-from services.context_builder import build_rag_prompt
+from .services.vector_service import search_tickets_and_events
+from .services.context_builder import build_rag_prompt
 
 def get_genai_client():
     api_key = getattr(settings, 'GEMINI_API_KEY', None) or "dummy_key_for_tests"
