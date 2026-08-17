@@ -71,7 +71,7 @@ def chat_query_view(request):
         )
 
         try:
-            response = client.models.generate_content(
+            response = chat_query_view.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=user_content,
                 config=types.GenerateContentConfig(
