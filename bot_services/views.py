@@ -15,6 +15,8 @@ def get_genai_client():
 
 MAX_DISTANCE_THRESHOLD = 0.6
 
+client= get_genai_client()
+
 @csrf_exempt
 def chat_query_view(request):
     if request.method != "POST":
@@ -71,7 +73,7 @@ def chat_query_view(request):
         )
 
         try:
-            client=get_genai_client()
+        
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=user_content,
