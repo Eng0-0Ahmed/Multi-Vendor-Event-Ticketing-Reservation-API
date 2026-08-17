@@ -1,10 +1,10 @@
 import redis
 from django.conf import settings
 
-pool = redis.ConnectionPool(
-    host=getattr(settings, 'REDIS_HOST', 'localhost'),
-    port=getattr(settings, 'REDIS_PORT', 6379),
-    db=0,
+redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379/0')
+
+pool = redis.ConnectionPool.from_url(
+    redis_url,
     decode_responses=True
 )
 
