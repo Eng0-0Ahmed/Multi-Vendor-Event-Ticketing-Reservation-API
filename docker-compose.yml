@@ -11,6 +11,8 @@ services:
     depends_on:
       - db
       - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
 
   db:
     image: postgres:15-alpine

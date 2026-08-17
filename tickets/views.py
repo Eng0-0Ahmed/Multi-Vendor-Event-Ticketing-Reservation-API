@@ -18,7 +18,7 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .redis_client import get_redis_client
+from notifications.redis_client import get_redis_client
 from users.permissions import IsEventOwner
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
