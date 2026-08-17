@@ -12,7 +12,7 @@ https://multi-vendor-event-ticketing-reservation-api-production.up.railway.app/a
 
 I got tired of systems that *looked* concurrent-safe until they weren't. Ticket platforms are a perfect storm: high volume, tight inventory, money involved, and everyone buying tickets at the exact same moment. Most examples online either ignore this entirely or hand-wave it away.
 
-This project treats concurrency as a first-class problem. The database row-level locking isn't a band-aid—it's the foundation. Real Stripe integration means we're not pretending payment is simple. And the notification system is decoupled because email should never block a customer's purchase confirmation.
+This project treats concurrency as a first-class problem. The database row-level locking isn't a band-aid—it's the foundation. Real Stripe integration means we're not pretending payment is simple. The notification system is decoupled because email should never block a customer's purchase confirmation. And the support chatbot is grounded in real platform data instead of guessing, because a bot that makes up ticket prices is worse than no bot.
 
 It's not a toy. It's also not overengineered for problems that don't exist yet.
 
@@ -28,10 +28,12 @@ It's not a toy. It's also not overengineered for problems that don't exist yet.
 
 **Built for humans.** Soft deletes so you never accidentally nuke data. Check constraints at the database level so bad data can't sneak in. JWT authentication that actually works. Role-based permissions—organizers can only see their own events. The API docs auto-generate from code and stay up-to-date.
 
+**A support bot that won't hallucinate ticket prices.** RAG-backed chat, grounded only in published events and tickets. If it doesn't find relevant data, it says so instead of making something up.
+
 ## Testing
 
-50 automated tests across the Django test suite, covering concurrent reservation scenarios, 
-Stripe webhook idempotency, permissions, state-machine transitions, and query performance — 
+53 automated tests across the Django test suite, covering concurrent reservation scenarios, 
+Stripe webhook idempotency, permissions, state-machine transitions, bot and query performance — 
 run in CI on every push (`docker compose exec web python manage.py test`).
 
 Test coverage: 95% overall (92% excluding the test files themselves), measured with 
@@ -68,13 +70,34 @@ When a ticket sells, instead of trying to send an email right there, the API jus
 
 **The notification service** sits on the other end of that Redis queue. It's a separate FastAPI app that pulls events and sends emails. If email is slow, timing out, or the service is down for maintenance—doesn't matter. The ticket purchase already happened. Customers never see the delay.
 
-This split means:
-- Scale the ticket API independently of email sending
-- Emails never block a purchase (slow SMTP server? not your problem)
-- You can deploy, restart, or update each service without touching the other
-- Easy to test—mock the Redis queue and both services work offline
+**The support chatbot** works the same way. Whenever an event or ticket is created or updated, Django pushes it onto a second Redis queue (`vector_sync`). A background management command consumes that queue and indexes the item into a ChromaDB vector store, so creating an event never waits on embedding it. When a customer asks the bot a question, it retrieves the closest matching events/tickets from that vector store and asks Gemini to answer using only that context—if nothing relevant comes back, it says so instead of guessing.
 
-See the [notification service repo](https://github.com/Eng0-0Ahmed/Notification-Service) for the email half of this.
+This split means:
+- Scale the ticket API independently of email sending and bot indexing
+- Emails and vector indexing never block a purchase or an event update
+- You can deploy, restart, or update each service without touching the others
+- Easy to test—mock the Redis queues and every piece works offline
+
+See the [notification service repo](https://github.com/Eng0-0Ahmed/Notification-Service) for the email half of this, and [Bot-Services](https://github.com/Eng0-0Ahmed/Bot-Services) (now archived) for the earlier standalone version the chatbot was ported in from.
+
+## Support chatbot (RAG)
+
+`POST /api/bot` answers customer questions using only published events and ticket data — no hallucinated answers about events that don't exist.
+
+**How it works:**
+
+1. When an event or ticket is created/updated, Django pushes a job onto a Redis list (`vector_sync`).
+2. `python manage.py run_vector_sync` runs as a background worker consuming that queue and upserting items into a ChromaDB collection. This keeps indexing off the request/response cycle.
+3. On `POST /api/bot`, the service embeds the user's question, retrieves the closest matching events/tickets, and asks Gemini to answer using only that retrieved context. If nothing relevant is found (distance above threshold), it returns a fixed "I can only assist with published events" reply.
+4. Responses are cached in Redis (keyed by a hash of the normalized query) so repeat questions don't re-hit Gemini.
+
+**Guardrails:** the system prompt treats retrieved context as untrusted data and explicitly tells the model to ignore any instructions embedded inside it — a basic defense against prompt injection via event/ticket descriptions.
+
+Run the sync worker alongside the web process:
+
+```bash
+docker compose exec web python manage.py run_vector_sync
+```
 
 ## Quick start
 
@@ -133,12 +156,20 @@ REDIS_PORT=6379
 # Stripe (get these from your Stripe dashboard)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Gemini (support chatbot — get from Google AI Studio)
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# Chroma (vector store for the support chatbot — optional, sane defaults below)
+CHROMA_MODE=local
+CHROMA_DB_PATH=./chroma_db
 ```
 
-Note: this service and the notification service don't talk over HTTP —
-they're only connected through the shared Redis queue (`REDIS_HOST`/
-`REDIS_PORT` above), so there's no notification service URL to configure
-here.
+Note: this service, the notification service, and the bot's indexing worker
+don't talk to each other over HTTP — they're only connected through shared
+Redis queues (`REDIS_HOST`/`REDIS_PORT` above), so there's no
+notification-service or bot-service URL to configure here. Redis also backs
+the Django cache used for chatbot response caching.
 
 ## API overview
 
