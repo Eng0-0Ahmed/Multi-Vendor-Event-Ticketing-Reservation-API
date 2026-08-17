@@ -23,7 +23,3 @@ class TicketSchema(BaseModel):
     created_at: str
     updated_at: str
     
-class AskQuestionRequest(BaseModel):
-    question: str
-    event_data: EventSchema
-    ticket_data: list[TicketSchema] = [] 
