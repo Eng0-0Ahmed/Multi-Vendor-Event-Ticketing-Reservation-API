@@ -183,3 +183,8 @@ CACHES = {
         "LOCATION": REDIS_URL,
     }
 }
+
+CHROMA_MODE = os.environ.get('CHROMA_MODE', 'local')
+CHROMA_DB_PATH = os.environ.get('CHROMA_DB_PATH', './chroma_db')
+CHROMA_SERVER_HOST = os.environ.get('CHROMA_SERVER_HOST', 'localhost')
+CHROMA_SERVER_PORT = int(os.environ.get('CHROMA_SERVER_PORT', 8000))
