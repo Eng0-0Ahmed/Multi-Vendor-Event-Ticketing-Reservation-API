@@ -9,7 +9,9 @@ from django.conf import settings
 from .services.vector_service import search_tickets_and_events
 from .services.context_builder import build_rag_prompt
 
-client = genai.Client(api_key=getattr(settings, 'GEMINI_API_KEY', None))
+def get_genai_client():
+    api_key = getattr(settings, 'GEMINI_API_KEY', None) or "dummy_key_for_tests"
+    return genai.Client(api_key=api_key)
 
 MAX_DISTANCE_THRESHOLD = 0.6
 
