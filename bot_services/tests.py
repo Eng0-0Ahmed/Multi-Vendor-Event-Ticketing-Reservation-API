@@ -23,6 +23,7 @@ class BotServiceAPITests(APITestCase):
         payload = {"query": "How much is the VIP ticket?", "n_results": 3}
         response = self.client.post(self.url, payload, format='json')
 
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(data["query"], "How much is the VIP ticket?")

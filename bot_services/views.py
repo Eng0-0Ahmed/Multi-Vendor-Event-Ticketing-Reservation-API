@@ -40,10 +40,15 @@ def chat_query_view(request):
         search_results = search_tickets_and_events(query_text=query, n_results=n_results)
         documents = search_results.get("documents", [])
         metadatas = search_results.get("metadatas", [])
-        distances = search_results.get("distances", [[]])
+        distances = search_results.get("distances", [])
 
-        top_distance = distances[0][0] if (distances and len(distances[0]) > 0) else None
-
+        top_distance = None
+        if distances:
+            first_elem = distances[0]
+            if isinstance(first_elem, (list, tuple)):
+                top_distance = first_elem[0] if len(first_elem) > 0 else None
+            elif isinstance(first_elem, (int, float)):
+                top_distance = first_elem
         if not documents or (top_distance is not None and top_distance > MAX_DISTANCE_THRESHOLD):
             fallback_payload = {
                 "query": query,
