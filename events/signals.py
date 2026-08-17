@@ -15,5 +15,6 @@ def queue_event_upsert(sender, instance, **kwargs):
         "location": instance.location,
         "status": instance.status,
         "vendor": str(instance.vendor_id),
+        "event_date": instance.event_date.isoformat(),
     }
     get_redis_client().rpush("vector_sync", json.dumps(payload))

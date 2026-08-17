@@ -14,6 +14,9 @@ def queue_tickettype_upsert(sender, instance, **kwargs):
         "event_title": instance.ticket_to_event.title,
         "price": float(instance.price),
         "available_quantity": instance.available_quantity,
-        "parent_event_id": str(instance.ticket_to_event_id),
+        "sales_start_at": instance.sales_start_at.isoformat(),
+        "sales_ended_at": instance.sales_ended_at.isoformat(),
+        "created_at": instance.created_at.isoformat(),
+        "updated_at": instance.updated_at.isoformat(),
     }
     get_redis_client().rpush("vector_sync", json.dumps(payload))

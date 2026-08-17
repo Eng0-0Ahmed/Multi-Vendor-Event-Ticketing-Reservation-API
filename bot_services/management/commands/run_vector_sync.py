@@ -35,7 +35,8 @@ class Command(BaseCommand):
                 if data.get("doc_type") == "event":
                     upsert_event_to_vector_db(EventSchema(**data))
                 else:
-                    upsert_ticket_to_vector_db(TicketSchema(**data))
+                    event_title = data.pop("event_title", "")
+                    upsert_ticket_to_vector_db(TicketSchema(**data), event_title=event_title)
 
             except redis.exceptions.TimeoutError:
                 continue
