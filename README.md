@@ -30,7 +30,7 @@ It's not a toy. It's also not overengineered for problems that don't exist yet.
 
 ## Testing
 
-46 automated tests across the Django test suite, covering concurrent reservation scenarios, 
+50 automated tests across the Django test suite, covering concurrent reservation scenarios, 
 Stripe webhook idempotency, permissions, state-machine transitions, and query performance — 
 run in CI on every push (`docker compose exec web python manage.py test`).
 
