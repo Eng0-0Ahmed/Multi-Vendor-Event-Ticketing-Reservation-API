@@ -32,11 +32,11 @@ It's not a toy. It's also not overengineered for problems that don't exist yet.
 
 ## Testing
 
-53 automated tests across the Django test suite, covering concurrent reservation scenarios, 
+60 automated tests across the Django test suite, covering concurrent reservation scenarios, 
 Stripe webhook idempotency, permissions, state-machine transitions, bot and query performance — 
 run in CI on every push (`docker compose exec web python manage.py test`).
 
-Test coverage: 95% overall (92% excluding the test files themselves), measured with 
+Test coverage: 89% overall (82% excluding the test files themselves), measured with 
 `docker compose exec web coverage run manage.py test && docker compose exec web coverage report`.
 
 ## Concurrency & Load Verification
@@ -98,6 +98,18 @@ Run the sync worker alongside the web process:
 ```bash
 docker compose exec web python manage.py run_vector_sync
 ```
+
+## WhatsApp support bot
+
+Same idea as the RAG bot, different channel: customers can check ticket availability and order status straight from WhatsApp, using Meta's Cloud API. It's deliberately not the Gemini/RAG flow above — just two commands, so there's nothing for it to hallucinate.
+
+**How it works:**
+
+1. Meta hits the webhook twice: a `GET` to verify the endpoint (echoes `hub.challenge` back if `hub.verify_token` matches `META_VERIFY_TOKEN`), then a `POST` for every inbound message.
+2. Every `POST` is checked against the `X-Hub-Signature-256` header before anything else runs: the raw body is HMAC-SHA256'd with `META_APP_SECRET` and compared with `hmac.compare_digest`. No valid Meta signature, no processing.
+3. Two commands: `TICKETS <event name>` looks up the event and lists up to 5 ticket types with price, and `STATUS <ticket_uuid>` returns the ticket's current status. Anything else (including an empty message) gets the same short help text.
+4. Replies go back out through the WhatsApp Graph API. Every processed message — id, sender, body, and the reply that was sent — is logged to `WhatsAppWebhookLog`.
+5. That log is also the idempotency check: Meta retries webhook deliveries, so before doing anything the view looks up the incoming `message_id` and skips reprocessing (and re-sending) if it's already there. Same instinct as the Stripe webhook — retries are the normal case, not an edge case.
 
 ## Quick start
 
@@ -163,6 +175,12 @@ GEMINI_API_KEY=your-gemini-api-key-here
 # Chroma (vector store for the support chatbot — optional, sane defaults below)
 CHROMA_MODE=local
 CHROMA_DB_PATH=./chroma_db
+
+# Meta / WhatsApp (support bot over WhatsApp — get from Meta App Dashboard)
+META_APP_SECRET=your-meta-app-secret
+META_VERIFY_TOKEN=your-own-arbitrary-verify-token
+WHATSAPP_TOKEN=your-whatsapp-cloud-api-token
+WHATSAPP_PHONE_NUMBER_ID=your-whatsapp-phone-number-id
 ```
 
 Note: this service, the notification service, and the bot's indexing worker
@@ -204,10 +222,13 @@ POST   /api/tickets/{id}/checkout/       Create Stripe checkout session
 POST   /api/tickets/verify/              Verify/check-in a ticket (QR data in request body)
 ```
 
-**Webhooks** (Stripe only)
+**Webhooks**
 ```
 POST   /api/tickets/stripe/webhook/      Stripe payment updates
+GET    /webhooks/meta/                   Meta webhook verification (WhatsApp)
+POST   /webhooks/meta/                   Incoming WhatsApp messages
 ```
+*(Meta webhook path shown as registered in `meta_services/urls.py` — adjust the prefix to wherever you include that app in your root `urls.py`.)*
 
 See the Swagger docs for the full list, response formats, and what each field means.
 
